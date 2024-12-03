@@ -6,56 +6,11 @@ const data = @embedFile("day03.txt");
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("result: {d}\n", .{try part1(data)});
-    try stdout.print("result: {d}\n", .{try part2(data)});
+    try stdout.print("result: {d}\n", .{try solve(data, false)});
+    try stdout.print("result: {d}\n", .{try solve(data, true)});
 }
 
-fn part1(input: []const u8) !u64 {
-    var sum: u64 = 0;
-    var i: u64 = 4;
-    while (i < input.len - 3) {
-        defer i += 1;
-        const left = (std.fmt.parseInt(u64, input[i .. i + 3], 10)) catch blk: {
-            break :blk std.fmt.parseInt(u64, input[i .. i + 2], 10) catch blk2: {
-                break :blk2 std.fmt.parseInt(u64, input[i .. i + 1], 10) catch {
-                    continue;
-                };
-            };
-        };
-
-        if (!std.mem.eql(u8, "mul(", input[i - 4 .. i])) {
-            continue;
-        }
-
-        print("len: {d}\n", .{number_of_digits(left)});
-
-        i += number_of_digits(left) + 1;
-        print("left {d}\n", .{left});
-
-        const right = (std.fmt.parseInt(u64, input[i .. i + 3], 10)) catch blk: {
-            break :blk std.fmt.parseInt(u64, input[i .. i + 2], 10) catch blk2: {
-                break :blk2 std.fmt.parseInt(u64, input[i .. i + 1], 10) catch {
-                    continue;
-                };
-            };
-        };
-
-        i += number_of_digits(right);
-        print("right {d}\n", .{right});
-
-        if (!std.mem.eql(u8, ")", input[i .. i + 1])) {
-            continue;
-        }
-
-        print("{d} * {d}\n", .{ left, right });
-
-        sum += left * right;
-    }
-
-    return sum;
-}
-
-fn part2(input: []const u8) !u64 {
+fn solve(input: []const u8, conditionals: bool) !u64 {
     var sum: u64 = 0;
     var i: u64 = 4;
     var enabled = true;
@@ -105,7 +60,7 @@ fn part2(input: []const u8) !u64 {
 
         print("{d} * {d}\n", .{ left, right });
 
-        if (enabled) {
+        if (!conditionals or (conditionals and enabled)) {
             sum += left * right;
         }
     }
@@ -131,9 +86,9 @@ const example2 =
     \\xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))
 ;
 test "example part 1" {
-    try std.testing.expectEqual(161, part1(example));
+    try std.testing.expectEqual(161, solve(example, false));
 }
 
 test "example part 2" {
-    try std.testing.expectEqual(48, part2(example2));
+    try std.testing.expectEqual(48, solve(example2, true));
 }
