@@ -5,6 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
     zig.url = "github:mitchellh/zig-overlay";
+    zls.url = "github:zigtools/zls";
   };
 
   outputs = {
@@ -15,8 +16,11 @@
   } @ inputs: let
     overlays = [
       # Other overlays
-      (final: prev: {
-        zigpkgs = inputs.zig.packages.${prev.system};
+      (final: prev: rec {
+        zig = inputs.zig.packages.${prev.system}.master;
+        zls = inputs.zls.packages.${prev.system}.zls.overrideAttrs (old: {
+          nativeBuildInputs = [ zig ];
+        });
       })
     ];
 
@@ -29,7 +33,7 @@
       in {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
-            zigpkgs.master
+            zig
             zls
           ];
         };
