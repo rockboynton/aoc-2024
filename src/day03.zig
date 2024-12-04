@@ -1,7 +1,5 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const print = std.debug.print;
-const ArrayList = std.ArrayList;
 const data = @embedFile("day03.txt");
 
 pub fn main() !void {
@@ -11,6 +9,8 @@ pub fn main() !void {
 }
 
 fn solve(input: []const u8, conditionals: bool) !u64 {
+    var timer = std.time.Timer.start() catch unreachable;
+
     var sum: u64 = 0;
     var i: u64 = 4;
     var enabled = true;
@@ -38,10 +38,10 @@ fn solve(input: []const u8, conditionals: bool) !u64 {
             continue;
         }
 
-        print("len: {d}\n", .{number_of_digits(left)});
+        // print("len: {d}\n", .{number_of_digits(left)});
 
         i += number_of_digits(left) + 1;
-        print("left {d}\n", .{left});
+        // print("left {d}\n", .{left});
 
         const right = (std.fmt.parseInt(u64, input[i .. i + 3], 10)) catch blk: {
             break :blk std.fmt.parseInt(u64, input[i .. i + 2], 10) catch blk2: {
@@ -52,18 +52,22 @@ fn solve(input: []const u8, conditionals: bool) !u64 {
         };
 
         i += number_of_digits(right);
-        print("right {d}\n", .{right});
+        // print("right {d}\n", .{right});
 
         if (!std.mem.eql(u8, ")", input[i .. i + 1])) {
             continue;
         }
 
-        print("{d} * {d}\n", .{ left, right });
+        // print("{d} * {d}\n", .{ left, right });
 
         if (!conditionals or (conditionals and enabled)) {
             sum += left * right;
         }
     }
+
+    const end = timer.read();
+
+    print("Took: {d}\n", .{end});
 
     return sum;
 }
