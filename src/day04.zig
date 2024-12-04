@@ -6,10 +6,11 @@ const ArrayList = std.ArrayList;
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("result: {d}\n", .{try solve(data)});
+    try stdout.print("result: {d}\n", .{try solve(data, true)});
+    try stdout.print("result: {d}\n", .{try solve(data, false)});
 }
 
-fn solve(input: []const u8) !u64 {
+fn solve(input: []const u8, part1: bool) !u64 {
     var timer = std.time.Timer.start() catch unreachable;
     defer print("Took: {d}\n", .{timer.read()});
 
@@ -30,9 +31,14 @@ fn solve(input: []const u8) !u64 {
     }
 
     const grid = rows.items;
-    
-    return countWordOccurances(grid, "XMAS");
+
+    if (part1) {
+        return countWordOccurances(grid, "XMAS");
+    } else {
+        return countXMas(grid);
+    }
 }
+
 fn searchInDirection(grid: [][]const u8, row: usize, col: usize, rowDir: isize, colDir: isize, word: []const u8) bool {
     const row_count = grid.len;
     const col_count = grid[0].len;
@@ -42,13 +48,13 @@ fn searchInDirection(grid: [][]const u8, row: usize, col: usize, rowDir: isize, 
         if (nrow < 0) {
             return false;
         }
-        const newRow: usize = @intCast(@as(isize, @as(isize, @intCast(row)) + @as(isize, @intCast(i)) * rowDir));
+        const new_row: usize = @intCast(@as(isize, @as(isize, @intCast(row)) + @as(isize, @intCast(i)) * rowDir));
         const ncol = @as(isize, @as(isize, @intCast(col)) + @as(isize, @intCast(i)) * colDir);
         if (ncol < 0) {
             return false;
         }
-        const newCol: usize = @intCast(@as(isize, @as(isize, @intCast(col)) + @as(isize, @intCast(i)) * colDir));
-        if (newRow >= row_count or newCol >= col_count or grid[newRow][newCol] != word[i]) {
+        const new_col: usize = @intCast(@as(isize, @as(isize, @intCast(col)) + @as(isize, @intCast(i)) * colDir));
+        if (new_row >= row_count or new_col >= col_count or grid[new_row][new_col] != word[i]) {
             return false;
         }
     }
@@ -84,7 +90,40 @@ fn countWordOccurances(grid: [][]const u8, word: []const u8) u64 {
                 } // Diagonal down-left
                 if (searchInDirection(grid, row, col, -1, 1, word)) {
                     count += 1;
-                }// Diagonal up-right
+                } // Diagonal up-right
+            }
+        }
+    }
+    return count;
+}
+
+fn searchXMas(grid: [][]const u8, row: usize, col: usize) bool {
+    const row_count = grid.len;
+    const col_count = grid[0].len;
+
+    const irow = @as(isize, @intCast(row));
+    if ((irow - 1 < 0) or (row + 1 >= row_count)) {
+        return false;
+    }
+    const icol = @as(isize, @intCast(col));
+    if ((icol < 0) or (col + 1 >= col_count)) {
+        return false;
+    }
+    const forward_slash = ((grid[row + 1][col + 1] == 'M' and grid[row - 1][col - 1] == 'S') or (grid[row + 1][col + 1] == 'S' and grid[row - 1][col - 1] == 'M'));
+    const back_slash = ((grid[row - 1][col + 1] == 'M' and grid[row + 1][col - 1] == 'S') or (grid[row - 1][col + 1] == 'S' and grid[row + 1][col - 1] == 'M'));
+
+    return forward_slash and back_slash;
+}
+
+fn countXMas(grid: [][]const u8) u64 {
+    var count: u64 = 0;
+
+    for (0..grid.len) |row| {
+        for (0..grid[0].len) |col| {
+            if (grid[row][col] == 'A') {
+                if (searchXMas(grid, row, col)) {
+                    count += 1;
+                } // Horizontal right
             }
         }
     }
@@ -103,6 +142,11 @@ const example =
     \\MAMMMXMMMM
     \\MXMXAXMASX
 ;
+
 test "example part 1" {
-    try std.testing.expectEqual(18, solve(example));
+    try std.testing.expectEqual(18, solve(example, true));
+}
+
+test "example part 2" {
+    try std.testing.expectEqual(9, solve(example, false));
 }
