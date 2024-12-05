@@ -5,9 +5,11 @@ const data = @embedFile("day05.txt");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const HashMap = std.AutoHashMap;
+const ArrayHashMap = std.AutoArrayHashMap;
 
 pub fn main() !void {
-    print("result: {d}\n", .{try solve(data)});
+    print("result: {d}\n", .{try solve(data, false)});
+    print("result: {d}\n", .{try solve(data, true)});
 }
 
 fn print_map(map: HashMap(u8, HashMap(u8, void))) void {
@@ -22,7 +24,7 @@ fn print_map(map: HashMap(u8, HashMap(u8, void))) void {
     }
 }
 
-fn solve(input: []const u8) !u64 {
+fn solve(input: []const u8, sum_invalids: bool) !u64 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -70,10 +72,17 @@ fn solve(input: []const u8) !u64 {
     // get result
     var updates = std.mem.tokenizeScalar(u8, update_section, '\n');
     var sum: u64 = 0;
+    var invalid_updates = ArrayList(ArrayList(u8)).init(allocator);
+    defer {
+        for (invalid_updates.items) |u| {
+            u.deinit();
+        }
+        invalid_updates.deinit();
+    }
+
     update_loop: while (updates.next()) |update| {
         log.debug("trying a update\n", .{});
         var pages = ArrayList(u8).init(allocator);
-        defer pages.deinit();
 
         var page_iter = std.mem.tokenizeScalar(u8, update, ',');
         var sub_dag = HashMap(u8, HashMap(u8, void)).init((allocator));
@@ -107,16 +116,51 @@ fn solve(input: []const u8) !u64 {
         log.debug("pages: {any}\n", .{pages.items});
         while (edges.next()) |pair| {
             if (index_map.get(pair[0]).? > index_map.get(pair[1]).?) {
+                try invalid_updates.append(pages);
                 continue :update_loop;
             }
         }
 
         log.debug("page item to sum: {d}\n", .{pages.items[pages.items.len / 2]});
         sum += pages.items[pages.items.len / 2];
+        pages.deinit();
+    }
+
+    var invalid_sum: u64 = 0;
+    for (invalid_updates.items) |update| {
+        // print("update: {any}\n", .{update.items});
+        var sub_dag = HashMap(u8, HashMap(u8, void)).init((allocator));
+        defer {
+            sub_dag.deinit();
+        } 
+
+        var page_set = HashMap(u8, void).init(allocator);
+        defer page_set.deinit();
+        for (update.items) |p| {
+            try page_set.put(p, {});
+            const l = dag.get(p).?;
+            try sub_dag.put(p, l);
+        }
+
+        const sorted_pages = try topologicalSort(&sub_dag, allocator);
+        defer sorted_pages.deinit();
+
+        var orig_pages = ArrayHashMap(u8, void).init(allocator);
+        defer orig_pages.deinit();
+
+        for (sorted_pages.items) |page| {
+            if (page_set.get(page) != null) {
+                try orig_pages.put(page, {});
+            }
+        }
+
+        // print("sorted update: {any}\n", .{orig_pages.keys()});
+
+        invalid_sum += orig_pages.keys()[orig_pages.keys().len / 2];
     }
     
 
-    return sum;
+    return if (sum_invalids) invalid_sum else sum;
 }
 
 fn dfs(node: u8, dag: *HashMap(u8, HashMap(u8, void)), visited: *HashMap(u8, void), stack: *ArrayList(u8)) !void {
@@ -186,6 +230,10 @@ const example =
 ;
 
 test "example part 1" {
-    try std.testing.expectEqual(143, solve(example));
+    try std.testing.expectEqual(143, solve(example, false));
+}
+
+test "example part 2" {
+    try std.testing.expectEqual(123, solve(example, true));
 }
 
