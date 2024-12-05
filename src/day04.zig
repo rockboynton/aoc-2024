@@ -11,9 +11,6 @@ pub fn main() !void {
 }
 
 fn solve(input: []const u8, part1: bool) !u64 {
-    var timer = std.time.Timer.start() catch unreachable;
-    defer print("Took: {d}\n", .{timer.read()});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -31,6 +28,9 @@ fn solve(input: []const u8, part1: bool) !u64 {
     }
 
     const grid = rows.items;
+
+    var timer = std.time.Timer.start() catch unreachable;
+    defer print("Took: {d} us\n", .{@as(f64, @floatFromInt(timer.read())) / 1000.0});
 
     if (part1) {
         return countWordOccurances(grid, "XMAS");
