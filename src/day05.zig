@@ -1,13 +1,25 @@
 const std = @import("std");
 const print = std.debug.print;
+const log = std.log;
 const data = @embedFile("day05.txt");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const HashMap = std.AutoHashMap;
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
-    try stdout.print("result: {d}\n", .{try solve(data)});
+    print("result: {d}\n", .{try solve(data)});
+}
+
+fn print_map(map: HashMap(u8, HashMap(u8, void))) void {
+    var items = map.iterator();
+    while (items.next()) |item| {
+        var values = item.value_ptr.*.keyIterator();
+        print("key: {d}, values: ", .{item.key_ptr.*});
+        while (values.next()) |value| {
+            print("{d}, ", .{value.*});
+        }
+        print("\n", .{});
+    }
 }
 
 fn solve(input: []const u8) !u64 {
@@ -25,10 +37,8 @@ fn solve(input: []const u8) !u64 {
     var sections = std.mem.tokenizeSequence(u8, input, "\n\n");
 
     const rule_section = sections.next().?;
-    // print("rules: {s}\n", .{rules});
 
     const update_section = sections.next().?;
-    // print("pages: {s}\n", .{pages});
 
     var rules = std.mem.tokenizeScalar(u8, rule_section, '\n');
     // build the DAG
@@ -46,54 +56,62 @@ fn solve(input: []const u8) !u64 {
         var pages = std.mem.tokenizeScalar(u8, rule, '|');
         const u = try std.fmt.parseInt(u8, pages.next().?, 10);
         const v = try std.fmt.parseInt(u8, pages.next().?, 10);
+        log.debug("u: {d}, v: {d}\n", .{u, v});
 
         const adjacency_list = try dag.getOrPutValue(u, HashMap(u8, void).init(allocator));
         try adjacency_list.value_ptr.*.put(v, {});
-    }
-
-    var items = dag.iterator();
-    while (items.next()) |item| {
-        var values = item.value_ptr.*.keyIterator();
-        print("key: {d}, values: ", .{item.key_ptr.*});
-        while (values.next()) |value| {
-            print("{d}, ", .{value.*});
+        if (dag.get(v) == null) {
+            try dag.put(v, HashMap(u8, void).init(allocator));
         }
-        print("\n", .{});
-        
     }
 
-    // topologically sort the DAG
-    const sorted_pages = try topologicalSort(&dag, allocator);
-
-    var index_map = HashMap(u8, u8).init(allocator);
-    defer index_map.deinit();
-    
-    for (sorted_pages.items, 0..) |page, i| {
-        try index_map.put(page, @intCast(i));
-    }
+    // print_map(dag);
 
     // get result
     var updates = std.mem.tokenizeScalar(u8, update_section, '\n');
     var sum: u64 = 0;
     update_loop: while (updates.next()) |update| {
+        log.debug("trying a update\n", .{});
         var pages = ArrayList(u8).init(allocator);
         defer pages.deinit();
 
         var page_iter = std.mem.tokenizeScalar(u8, update, ',');
+        var sub_dag = HashMap(u8, HashMap(u8, void)).init((allocator));
+        defer {
+            sub_dag.deinit();
+        } 
+
         while (page_iter.next()) |page| {
             const p = try std.fmt.parseInt(u8, page, 10);
+            const l = dag.get(p).?;
+            try sub_dag.put(p, l);
             try pages.append(p);
         }
 
+        // print_map(sub_dag);
+
+        // topologically sort the DAG
+        const sorted_pages = try topologicalSort(&sub_dag, allocator);
+        defer sorted_pages.deinit();
+
+        var index_map = HashMap(u8, u8).init(allocator);
+        defer index_map.deinit();
+    
+        for (sorted_pages.items, 0..) |page, i| {
+            log.debug("putting index map: k:{d}, v:{d}\n", .{page, i});
+            try index_map.put(page, @intCast(i));
+        }
+
+
         var edges = std.mem.window(u8, pages.items, 2, 1);
+        log.debug("pages: {any}\n", .{pages.items});
         while (edges.next()) |pair| {
-            if (index_map.get(pair[0]) != null and index_map.get(pair[1]) != null) {
-                if (index_map.get(pair[0]).? > index_map.get(pair[1]).?) {
-                    continue :update_loop;
-                }
+            if (index_map.get(pair[0]).? > index_map.get(pair[1]).?) {
+                continue :update_loop;
             }
         }
 
+        log.debug("page item to sum: {d}\n", .{pages.items[pages.items.len / 2]});
         sum += pages.items[pages.items.len / 2];
     }
     
@@ -102,22 +120,21 @@ fn solve(input: []const u8) !u64 {
 }
 
 fn dfs(node: u8, dag: *HashMap(u8, HashMap(u8, void)), visited: *HashMap(u8, void), stack: *ArrayList(u8)) !void {
-    const res = try visited.*.getOrPut(node);
-    if (res.found_existing) {
-        return;
-    }
+    try visited.*.put(node, {});
 
-    print("{d}\n", .{node});
-    const n = dag.*.get(node) orelse return;
-    var neighbors = n.keyIterator();
-    while (neighbors.next()) |neighbor| {
-        try dfs(neighbor.*, dag, visited, stack);
+    if (dag.*.get(node)) |neighbors| {
+        var iter = neighbors.keyIterator(); 
+        while (iter.next()) |neighbor| {
+            if (visited.get(neighbor.*) == null) {
+                try dfs(neighbor.*, dag, visited, stack);
+            }
+        }
     }
 
     try stack.append(node);
 }
 
-fn topologicalSort(dag: *HashMap(u8, HashMap(u8, void)), allocator: Allocator) !std.ArrayList(u8) {
+fn topologicalSort(dag: *HashMap(u8, HashMap(u8, void)), allocator: Allocator) !ArrayList(u8) {
     var visited = HashMap(u8, void).init(allocator);
     defer visited.deinit();
 
