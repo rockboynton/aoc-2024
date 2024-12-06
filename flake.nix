@@ -2,7 +2,7 @@
   description = "Advent of Code 2024";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     zig.url = "github:mitchellh/zig-overlay";
     zls.url = "github:zigtools/zls";
@@ -35,6 +35,7 @@
           nativeBuildInputs = with pkgs; [
             zig
             zls
+            lldb_19
           ];
         };
       }
