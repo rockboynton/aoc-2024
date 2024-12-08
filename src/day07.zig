@@ -8,22 +8,23 @@ const HashMap = std.AutoHashMap;
 const ArrayHashMap = std.AutoArrayHashMap;
 
 pub fn main() !void {
-    print("result: {d}\n", .{try solve(data)});
+    print("result: {d}\n", .{try solve(data, false)});
+    print("result: {d}\n", .{try solve(data, true)});
 }
 
-fn cartesianPower(map: *ArrayList([]u8), tmpArr: []u8, m: usize, n: usize, allocator: Allocator) !void {
-    const arr = "*+";
-    if (m == arr.len - 2 + n) {
+fn cartesianPower(map: *ArrayList([]u8), tmpArr: []u8, m: usize, n: usize, with_cat: bool, allocator: Allocator) !void {
+    const arr = if (with_cat) "*+c" else "*+";
+    if (m == n) {
         try map.*.append(try allocator.dupe(u8, tmpArr));
     } else {
         for (arr) |value| {
             tmpArr[m] = value;
-            try cartesianPower(&map.*, tmpArr, m + 1, n, allocator);
+            try cartesianPower(&map.*, tmpArr, m + 1, n, with_cat,  allocator);
         }
     }
 }
 
-fn solve(input: []const u8) !u64 {
+fn solve(input: []const u8, with_cat: bool) !u64 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -65,7 +66,7 @@ fn solve(input: []const u8) !u64 {
         }
         defer tmpArr.deinit();
 
-        try cartesianPower(&m, tmpArr.items[0..], 0, num_operands, allocator);
+        try cartesianPower(&m, tmpArr.items[0..], 0, num_operands, with_cat, allocator);
 
         for (m.items) |operators| {
             var res: u128 = try std.fmt.parseInt(u128, op_iter.next().?, 10); 
@@ -82,10 +83,14 @@ fn solve(input: []const u8) !u64 {
                 if (operators[op_idx] == '+') {
                     // print("+", .{});
                     res += operand_num;
-                } else {
+                } else if (operators[op_idx] == '*') {
                     // print("*", .{});
                     res *= operand_num;
+                } else {
+                    // print("||", .{});
+                    res = res * (try std.math.powi(u128, 10, std.math.log10_int(operand_num) + 1)) + operand_num;
                 }
+                // print("{} ", .{operand_num});
 
                 if (res > target) {
                     break;
@@ -93,7 +98,7 @@ fn solve(input: []const u8) !u64 {
             }
             if (res == target) {
                 calibration_result += target;
-                print("{}\n", .{target});
+                // print("{}\n", .{target});
                 break;
             }
             // print("\n", .{});
@@ -116,6 +121,10 @@ const example =
 ;
 
 test "example part 1" {
-    try std.testing.expectEqual(3749, solve(example));
+    try std.testing.expectEqual(3749, solve(example, false));
+}
+
+test "example part 2" {
+    try std.testing.expectEqual(11387, solve(example, true));
 }
 
