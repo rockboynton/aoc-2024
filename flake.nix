@@ -6,12 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
     zig.url = "github:mitchellh/zig-overlay";
     zls.url = "github:zigtools/zls";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = {
     self,
     nixpkgs,
     flake-utils,
+    rust-overlay,
     ...
   } @ inputs: let
     overlays = [
@@ -22,6 +24,7 @@
           nativeBuildInputs = [ zig ];
         });
       })
+      (import rust-overlay)
     ];
 
     # Our supported systems are the same supported systems as the Zig binaries
@@ -33,6 +36,9 @@
       in {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
+            (rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+            })
             zig
             zls
             lldb_19
