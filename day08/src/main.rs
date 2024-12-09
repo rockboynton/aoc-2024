@@ -8,17 +8,17 @@ struct Point {
 }
 
 impl Point {
-    fn symmetric_point(&self, other: &Point) -> Point {
+    fn antinode(&self, other: &Point) -> Point {
         Point {
             x: self.x + (self.x - other.x),
             y: self.y + (self.y - other.y),
         }
     }
 
-    // Finds the antinode points given two antenna locations with integer coordinates
-    fn antinodes(a: Point, b: Point) -> (Point, Point) {
-        (a.symmetric_point(&b), b.symmetric_point(&a))
-    }
+    // // Finds the antinode points given two antenna locations with integer coordinates
+    // fn antinode(a: Point, b: Point) -> Point {
+    //     a.symmetric_point(&b)
+    // }
 
     fn in_bounds(&self, rows: isize, cols: isize) -> bool {
         (0..rows).contains(&self.y) && (0..cols).contains(&self.x)
@@ -28,10 +28,10 @@ impl Point {
 struct Frequency(char);
 
 fn main() {
-    println!("{}", solve(include_str!("../input.txt")));
+    println!("{}", solve(include_str!("../input.txt"), false));
 }
 
-fn solve(input: &str) -> u64 {
+fn solve(input: &str, with_harmonics: bool) -> u64 {
     let mut antenna_map: HashMap<Frequency, Vec<Point>> = HashMap::new();
     let mut rows = 0;
     let mut cols = 0;
@@ -55,12 +55,9 @@ fn solve(input: &str) -> u64 {
         let pairs: Vec<Vec<&Point>> = points.iter().permutations(2).collect();
 
         for points in pairs.iter() {
-            let (a1, a2) = Point::antinodes(*points[0], *points[1]);
-            if a1.in_bounds(rows, cols) {
-                antinodes.insert(a1);
-            }
-            if a2.in_bounds(rows, cols) {
-                antinodes.insert(a2);
+            let antinode = points[0].antinode(points[1]);
+            if antinode.in_bounds(rows, cols) {
+                antinodes.insert(antinode);
             }
         }
     }
@@ -76,7 +73,7 @@ mod tests {
     fn test_solve_part1() {
         let input = include_str!("../example.txt");
 
-        let part1 = solve(input);
+        let part1 = solve(input, false);
         assert_eq!(part1, 14);
     }
 
@@ -85,7 +82,8 @@ mod tests {
         let a = Point { x: 5, y: 5 };
         let b = Point { x: 4, y: 3 };
 
-        let (a1, a2) = Point::antinodes(a, b);
+        let a1 = a.antinode(&b);
+        let a2 = b.antinode(&a);
         assert_eq!(a1, Point { x: 6, y: 7 });
         assert_eq!(a2, Point { x: 3, y: 1 });
     }
