@@ -15,11 +15,6 @@ impl Point {
         }
     }
 
-    // // Finds the antinode points given two antenna locations with integer coordinates
-    // fn antinode(a: Point, b: Point) -> Point {
-    //     a.symmetric_point(&b)
-    // }
-
     fn in_bounds(&self, rows: isize, cols: isize) -> bool {
         (0..rows).contains(&self.y) && (0..cols).contains(&self.x)
     }
@@ -29,6 +24,7 @@ struct Frequency(char);
 
 fn main() {
     println!("{}", solve(include_str!("../input.txt"), false));
+    println!("{}", solve(include_str!("../input.txt"), true));
 }
 
 fn solve(input: &str, with_harmonics: bool) -> u64 {
@@ -55,9 +51,20 @@ fn solve(input: &str, with_harmonics: bool) -> u64 {
         let pairs: Vec<Vec<&Point>> = points.iter().permutations(2).collect();
 
         for points in pairs.iter() {
-            let antinode = points[0].antinode(points[1]);
-            if antinode.in_bounds(rows, cols) {
-                antinodes.insert(antinode);
+            if with_harmonics {
+                let mut p0 = *points[0];
+                let mut p1 = *points[1];
+                while p1.in_bounds(rows, cols) {
+                    antinodes.insert(p1);
+                    let tmp = p0;
+                    p0 = p0.antinode(&p1);
+                    p1 = tmp;
+                }
+            } else {
+                let antinode = points[0].antinode(points[1]);
+                if antinode.in_bounds(rows, cols) {
+                    antinodes.insert(antinode);
+                }
             }
         }
     }
@@ -75,6 +82,32 @@ mod tests {
 
         let part1 = solve(input, false);
         assert_eq!(part1, 14);
+    }
+
+    #[test]
+    fn test_solve_part2() {
+        let input = include_str!("../example.txt");
+
+        let part1 = solve(input, true);
+        assert_eq!(part1, 34);
+    }
+
+    #[test]
+    fn test_solve_part2_extra() {
+        let input = "T.........
+...T......
+.T........
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+";
+
+        let res = solve(input, true);
+        assert_eq!(res, 9);
     }
 
     #[test]
